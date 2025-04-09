@@ -22,7 +22,7 @@ class CrawlerService {
    */
   initialize() {
     try {
-      const apiKey = process.env.FIRECRAWL_API_KEY;
+      const apiKey = process.env.FIRECRAWL_API_KEY || 'fc-31e88675573d49a981e8fde2a3d0f309';
       
       if (!apiKey) {
         logger.error('Firecrawl API Keyが設定されていません');
