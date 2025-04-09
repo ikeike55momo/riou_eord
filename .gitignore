@@ -43,4 +43,9 @@ yarn-error.log*
 
 # System Files
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Docs - temporary files
+docs/**/*.tmp
+docs/**/*.bak
+docs/**/*.temp 
