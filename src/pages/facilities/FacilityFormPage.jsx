@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import api from '../../services/api';
 
 const FacilityFormPage = () => {
   const { id } = useParams();
@@ -443,5 +443,123 @@ const FacilityFormPage = () => {
               Wi-Fi
             </label>
             <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gr
-(Content truncated due to size limit. Use line ranges to read in chunks)
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="wifi"
+              name="wifi"
+              type="text"
+              placeholder="例: 利用可、利用不可"
+              value={formData.wifi}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="payment_options">
+              支払い方法
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="payment_options"
+              name="payment_options"
+              type="text"
+              placeholder="例: 現金、クレジットカード、電子マネー"
+              value={formData.payment_options}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="barrier_free">
+              バリアフリー
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="barrier_free"
+              name="barrier_free"
+              type="text"
+              placeholder="例: 対応、一部対応"
+              value={formData.barrier_free}
+              onChange={handleChange}
+            />
+          </div>
+          
+          {/* その他情報セクション */}
+          <div className="col-span-2">
+            <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">その他情報</h2>
+          </div>
+          
+          <div className="col-span-2 mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="additional_info">
+              追加情報
+            </label>
+            <textarea
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="additional_info"
+              name="additional_info"
+              placeholder="その他、施設に関する追加情報"
+              value={formData.additional_info}
+              onChange={handleChange}
+              rows="4"
+            />
+          </div>
+          
+          {/* クローリング用URL */}
+          <div className="col-span-2">
+            <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">クローリング用URL（キーワード生成に使用）</h2>
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="gbp_url">
+              Google ビジネスプロフィールURL
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="gbp_url"
+              name="gbp_url"
+              type="url"
+              placeholder="https://www.google.com/maps/place/..."
+              value={formData.gbp_url}
+              onChange={handleChange}
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="official_site_url">
+              公式サイトURL
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="official_site_url"
+              name="official_site_url"
+              type="url"
+              placeholder="https://www.example.com"
+              value={formData.official_site_url}
+              onChange={handleChange}
+            />
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-end mt-8">
+          <button
+            type="button"
+            onClick={() => navigate('/facilities')}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded mr-2"
+          >
+            キャンセル
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className={`bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded ${
+              submitting ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {submitting ? '保存中...' : isEditMode ? '更新する' : '登録する'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default FacilityFormPage;
