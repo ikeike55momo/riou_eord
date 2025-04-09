@@ -1,9 +1,9 @@
 /**
  * GPT-4統合サービス
- * OpenAI GPT-4 APIとの連携機能を提供します
+ * Open Router API経由でGPT-4oとの連携機能を提供します
  */
 
-import { Configuration, OpenAIApi } from 'openai';
+import axios from 'axios';
 import logger from '../../utils/logger.js';
 
 /**
@@ -11,8 +11,8 @@ import logger from '../../utils/logger.js';
  */
 class GPTService {
   constructor() {
-    this.configuration = null;
-    this.openai = null;
+    this.apiKey = null;
+    this.baseUrl = 'https://openrouter.ai/api/v1';
     this.initialized = false;
   }
 
@@ -22,18 +22,14 @@ class GPTService {
    */
   initialize() {
     try {
-      const apiKey = process.env.OPENAI_API_KEY;
+      const apiKey = process.env.OPENROUTER_API_KEY || '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';
       
       if (!apiKey) {
-        logger.error('OpenAI API Keyが設定されていません');
+        logger.error('Open Router API Keyが設定されていません');
         return false;
       }
       
-      this.configuration = new Configuration({
-        apiKey: apiKey,
-      });
-      
-      this.openai = new OpenAIApi(this.configuration);
+      this.apiKey = apiKey;
       this.initialized = true;
       
       logger.info('GPTサービスが初期化されました');
@@ -45,7 +41,7 @@ class GPTService {
   }
 
   /**
-   * GPT-4を使用してテキスト生成
+   * GPT-4oを使用してテキスト生成
    * @param {string} prompt - 入力プロンプト
    * @param {Object} options - 生成オプション
    * @returns {Promise<string>} 生成されたテキスト
@@ -59,7 +55,7 @@ class GPTService {
     
     try {
       const defaultOptions = {
-        model: 'gpt-4',
+        model: 'openai/gpt-4o',
         temperature: 0.7,
         max_tokens: 1000,
         top_p: 1,
@@ -69,20 +65,29 @@ class GPTService {
       
       const mergedOptions = { ...defaultOptions, ...options };
       
-      const response = await this.openai.createCompletion({
-        model: mergedOptions.model,
-        prompt: prompt,
-        temperature: mergedOptions.temperature,
-        max_tokens: mergedOptions.max_tokens,
-        top_p: mergedOptions.top_p,
-        frequency_penalty: mergedOptions.frequency_penalty,
-        presence_penalty: mergedOptions.presence_penalty
-      });
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: mergedOptions.model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: mergedOptions.temperature,
+          max_tokens: mergedOptions.max_tokens,
+          top_p: mergedOptions.top_p,
+          frequency_penalty: mergedOptions.frequency_penalty,
+          presence_penalty: mergedOptions.presence_penalty
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
       
       if (response.data.choices && response.data.choices.length > 0) {
-        return response.data.choices[0].text.trim();
+        return response.data.choices[0].message.content.trim();
       } else {
-        throw new Error('GPT-4からの応答が空です');
+        throw new Error('GPT-4oからの応答が空です');
       }
     } catch (err) {
       logger.error(`GPTテキスト生成エラー: ${err.message}`);
