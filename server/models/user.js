@@ -1,13 +1,13 @@
 /**
  * ユーザーモデル
- * Supabaseと連携してユーザー情報を管理します
+ * ユーザー認証と権限管理のためのモデル
  */
 
 import { createClient } from '@supabase/supabase-js';
 import logger from '../utils/logger.js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
@@ -15,130 +15,277 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  */
 class User {
   /**
-   * ユーザーIDでユーザーを取得
+   * ユーザー登録
+   * @param {Object} userData - ユーザーデータ
+   * @returns {Promise<Object>} 登録結果
+   */
+  async register(userData) {
+    try {
+      const { email, password, name, role = 'user' } = userData;
+      
+      if (!email || !password) {
+        throw new Error('メールアドレスとパスワードは必須です');
+      }
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            role
+          }
+        }
+      });
+      
+      if (error) {
+        logger.error(`ユーザー登録エラー: ${error.message}`);
+        throw error;
+      }
+      
+      logger.info(`ユーザーが登録されました: ${email}`);
+      return data;
+    } catch (err) {
+      logger.error(`ユーザー登録処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * ユーザーログイン
+   * @param {string} email - メールアドレス
+   * @param {string} password - パスワード
+   * @returns {Promise<Object>} ログイン結果
+   */
+  async login(email, password) {
+    try {
+      if (!email || !password) {
+        throw new Error('メールアドレスとパスワードは必須です');
+      }
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        logger.error(`ログインエラー: ${error.message}`);
+        throw error;
+      }
+      
+      logger.info(`ユーザーがログインしました: ${email}`);
+      return data;
+    } catch (err) {
+      logger.error(`ログイン処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * ユーザーログアウト
+   * @param {string} token - 認証トークン
+   * @returns {Promise<Object>} ログアウト結果
+   */
+  async logout(token) {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        logger.error(`ログアウトエラー: ${error.message}`);
+        throw error;
+      }
+      
+      logger.info('ユーザーがログアウトしました');
+      return { success: true };
+    } catch (err) {
+      logger.error(`ログアウト処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * ユーザー情報の取得
    * @param {string} userId - ユーザーID
    * @returns {Promise<Object>} ユーザー情報
    */
-  static async getById(userId) {
+  async getById(userId) {
     try {
+      if (!userId) {
+        throw new Error('ユーザーIDは必須です');
+      }
+      
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
-
+      
       if (error) {
-        logger.error(`ユーザー取得エラー: ${error.message}`);
+        logger.error(`ユーザー情報取得エラー: ${error.message}`);
         throw error;
       }
-
+      
+      if (!data) {
+        logger.warn(`ユーザーが見つかりません: ${userId}`);
+        throw new Error('ユーザーが見つかりません');
+      }
+      
       return data;
     } catch (err) {
-      logger.error(`ユーザー取得中に例外が発生: ${err.message}`);
+      logger.error(`ユーザー情報取得処理エラー: ${err.message}`);
       throw err;
     }
   }
-
+  
   /**
-   * メールアドレスでユーザーを取得
-   * @param {string} email - メールアドレス
-   * @returns {Promise<Object>} ユーザー情報
-   */
-  static async getByEmail(email) {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .single();
-
-      if (error) {
-        logger.error(`ユーザー取得エラー: ${error.message}`);
-        throw error;
-      }
-
-      return data;
-    } catch (err) {
-      logger.error(`ユーザー取得中に例外が発生: ${err.message}`);
-      throw err;
-    }
-  }
-
-  /**
-   * 新規ユーザーを作成
-   * @param {Object} userData - ユーザーデータ
-   * @returns {Promise<Object>} 作成されたユーザー
-   */
-  static async create(userData) {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .insert([userData])
-        .select();
-
-      if (error) {
-        logger.error(`ユーザー作成エラー: ${error.message}`);
-        throw error;
-      }
-
-      logger.info(`新規ユーザーが作成されました: ${userData.email}`);
-      return data[0];
-    } catch (err) {
-      logger.error(`ユーザー作成中に例外が発生: ${err.message}`);
-      throw err;
-    }
-  }
-
-  /**
-   * ユーザー情報を更新
+   * ユーザー情報の更新
    * @param {string} userId - ユーザーID
    * @param {Object} userData - 更新するユーザーデータ
-   * @returns {Promise<Object>} 更新されたユーザー
+   * @returns {Promise<Object>} 更新結果
    */
-  static async update(userId, userData) {
+  async update(userId, userData) {
     try {
+      if (!userId) {
+        throw new Error('ユーザーIDは必須です');
+      }
+      
+      const { name, role } = userData;
+      const updateData = {};
+      
+      if (name) updateData.name = name;
+      if (role) updateData.role = role;
+      
       const { data, error } = await supabase
-        .from('users')
-        .update(userData)
+        .from('profiles')
+        .update(updateData)
         .eq('id', userId)
-        .select();
-
+        .select()
+        .single();
+      
       if (error) {
-        logger.error(`ユーザー更新エラー: ${error.message}`);
+        logger.error(`ユーザー情報更新エラー: ${error.message}`);
         throw error;
       }
-
+      
       logger.info(`ユーザー情報が更新されました: ${userId}`);
-      return data[0];
+      return data;
     } catch (err) {
-      logger.error(`ユーザー更新中に例外が発生: ${err.message}`);
+      logger.error(`ユーザー情報更新処理エラー: ${err.message}`);
       throw err;
     }
   }
-
+  
   /**
-   * ユーザーを削除
+   * ユーザーの削除
    * @param {string} userId - ユーザーID
-   * @returns {Promise<void>}
+   * @returns {Promise<Object>} 削除結果
    */
-  static async delete(userId) {
+  async delete(userId) {
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', userId);
-
+      if (!userId) {
+        throw new Error('ユーザーIDは必須です');
+      }
+      
+      const { error } = await supabase.auth.admin.deleteUser(userId);
+      
       if (error) {
         logger.error(`ユーザー削除エラー: ${error.message}`);
         throw error;
       }
-
+      
       logger.info(`ユーザーが削除されました: ${userId}`);
+      return { success: true };
     } catch (err) {
-      logger.error(`ユーザー削除中に例外が発生: ${err.message}`);
+      logger.error(`ユーザー削除処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * ユーザー一覧の取得
+   * @param {Object} options - 取得オプション
+   * @returns {Promise<Array>} ユーザー一覧
+   */
+  async list(options = {}) {
+    try {
+      const { limit = 100, offset = 0, role } = options;
+      
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .range(offset, offset + limit - 1);
+      
+      if (role) {
+        query = query.eq('role', role);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        logger.error(`ユーザー一覧取得エラー: ${error.message}`);
+        throw error;
+      }
+      
+      return data || [];
+    } catch (err) {
+      logger.error(`ユーザー一覧取得処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * パスワードリセットメールの送信
+   * @param {string} email - メールアドレス
+   * @returns {Promise<Object>} 送信結果
+   */
+  async sendPasswordResetEmail(email) {
+    try {
+      if (!email) {
+        throw new Error('メールアドレスは必須です');
+      }
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+      if (error) {
+        logger.error(`パスワードリセットメール送信エラー: ${error.message}`);
+        throw error;
+      }
+      
+      logger.info(`パスワードリセットメールが送信されました: ${email}`);
+      return { success: true };
+    } catch (err) {
+      logger.error(`パスワードリセットメール送信処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * パスワードの更新
+   * @param {string} password - 新しいパスワード
+   * @returns {Promise<Object>} 更新結果
+   */
+  async updatePassword(password) {
+    try {
+      if (!password) {
+        throw new Error('パスワードは必須です');
+      }
+      
+      const { error } = await supabase.auth.updateUser({
+        password
+      });
+      
+      if (error) {
+        logger.error(`パスワード更新エラー: ${error.message}`);
+        throw error;
+      }
+      
+      logger.info('パスワードが更新されました');
+      return { success: true };
+    } catch (err) {
+      logger.error(`パスワード更新処理エラー: ${err.message}`);
       throw err;
     }
   }
 }
 
-export default User;
+export default new User();
