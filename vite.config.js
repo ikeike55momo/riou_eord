@@ -4,6 +4,10 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  root: './',
+  build: {
+    outDir: 'dist',
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -15,4 +19,4 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
     },
   },
-}); 
+});  
