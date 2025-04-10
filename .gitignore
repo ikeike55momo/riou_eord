@@ -48,4 +48,4 @@ Thumbs.db
 # Docs - temporary files
 docs/**/*.tmp
 docs/**/*.bak
-docs/**/*.temp 
+docs/**/*.temp .env

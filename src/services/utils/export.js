@@ -52,7 +52,7 @@ router.get('/csv/:facilityId', requireAuth, async (req, res) => {
     let generationTimestamp = null;
     
     keywordsData.forEach(item => {
-      if (keywords.hasOwnProperty(item.category)) {
+      if (Object.prototype.hasOwnProperty.call(keywords, item.category)) {
         keywords[item.category] = item.keywords;
       }
       
@@ -131,7 +131,7 @@ router.get('/csv', requireAuth, async (req, res) => {
         };
       }
       
-      if (facilityKeywords[item.facility_id].hasOwnProperty(item.category)) {
+      if (Object.prototype.hasOwnProperty.call(facilityKeywords[item.facility_id], item.category)) {
         facilityKeywords[item.facility_id][item.category] = item.keywords;
       }
       
