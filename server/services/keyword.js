@@ -1,130 +1,297 @@
 /**
  * キーワードサービス
- * キーワード生成と管理に関するビジネスロジックを提供します
+ * キーワード生成と管理のためのサービス
  */
 
 import Keyword from '../models/keyword.js';
 import Facility from '../models/facility.js';
 import logger from '../utils/logger.js';
 
+import keywordGenerator from './ai/keyword-generator.js';
+
 /**
  * キーワードサービスクラス
  */
 class KeywordService {
   /**
-   * 施設IDに関連するキーワードを取得
+   * 施設IDに基づくキーワードの取得
    * @param {string} facilityId - 施設ID
-   * @returns {Promise<Object>} カテゴリ別のキーワード
+   * @returns {Promise<Object>} キーワード情報
    */
-  static async getKeywordsByFacilityId(facilityId) {
+  async getKeywordsByFacilityId(facilityId) {
     try {
-      const facility = await Facility.getById(facilityId);
-      if (!facility) {
+      logger.info(`キーワード取得開始: 施設ID ${facilityId}`);
+      
+      try {
+        await Facility.getById(facilityId);
+      } catch (err) {
+        logger.error(`施設存在確認エラー: ${err.message}`);
         throw new Error('施設が見つかりません');
       }
       
-      return await Keyword.getByFacilityId(facilityId);
+      const keywords = await Keyword.getByFacilityId(facilityId);
+      
+      logger.info(`キーワード取得完了: 施設ID ${facilityId}`);
+      return keywords;
     } catch (err) {
-      logger.error(`キーワード取得エラー: ${err.message}`);
+      logger.error(`キーワード取得サービスエラー: ${err.message}`);
       throw err;
     }
   }
-
+  
   /**
-   * キーワードを生成
+   * キーワードの更新
    * @param {string} facilityId - 施設ID
-   * @returns {Promise<Object>} 生成されたキーワード
-   */
-  static async generateKeywords(facilityId) {
-    try {
-      const facility = await Facility.getById(facilityId);
-      if (!facility) {
-        throw new Error('施設が見つかりません');
-      }
-      
-      logger.info(`施設ID ${facilityId} のキーワード生成を開始`);
-      
-      const dummyKeywords = {
-        menu_service: [],
-        environment_facility: [],
-        recommended_scene: []
-      };
-      
-      if (facility.business_type) {
-        const businessType = facility.business_type.toLowerCase();
-        
-        if (businessType.includes('レストラン') || businessType.includes('飲食') || businessType.includes('カフェ')) {
-          dummyKeywords.menu_service = ['ランチセット', 'ディナーコース', '季節の料理', 'テイクアウト', 'デザート'];
-          dummyKeywords.environment_facility = ['テラス席あり', '個室完備', 'Wi-Fi利用可', '禁煙席あり', '駐車場完備'];
-          dummyKeywords.recommended_scene = ['デート', '接待', '家族での食事', '記念日', '女子会'];
-        }
-        else if (businessType.includes('ホテル') || businessType.includes('旅館')) {
-          dummyKeywords.menu_service = ['朝食バイキング', '夕食コース', 'ルームサービス', '送迎サービス', 'エステ'];
-          dummyKeywords.environment_facility = ['大浴場', '露天風呂', 'Wi-Fi完備', '駐車場無料', 'バリアフリー'];
-          dummyKeywords.recommended_scene = ['家族旅行', 'カップル旅行', 'ビジネス出張', '長期滞在', '一人旅'];
-        }
-        else if (businessType.includes('美容') || businessType.includes('サロン')) {
-          dummyKeywords.menu_service = ['カット', 'カラー', 'パーマ', 'トリートメント', 'ヘッドスパ'];
-          dummyKeywords.environment_facility = ['完全個室', '駐車場あり', 'キッズスペース', 'バリアフリー', '予約制'];
-          dummyKeywords.recommended_scene = ['結婚式前', 'デート前', '就活', '記念日', '気分転換'];
-        }
-        else {
-          dummyKeywords.menu_service = ['基本サービス', 'プレミアムプラン', '定期コース', '初回限定', '会員特典'];
-          dummyKeywords.environment_facility = ['駐車場あり', 'バリアフリー対応', 'Wi-Fi完備', '予約可能', '送迎あり'];
-          dummyKeywords.recommended_scene = ['日常利用', 'ビジネス', '家族で', '友人と', '特別な日に'];
-        }
-      }
-      
-      if (facility.facility_name) {
-        dummyKeywords.menu_service.push(`${facility.facility_name}のおすすめメニュー`);
-        dummyKeywords.environment_facility.push(`${facility.facility_name}の雰囲気`);
-        dummyKeywords.recommended_scene.push(`${facility.facility_name}でのひととき`);
-      }
-      
-      await Keyword.save(facilityId, dummyKeywords);
-      
-      logger.info(`施設ID ${facilityId} のキーワード生成が完了`);
-      return dummyKeywords;
-    } catch (err) {
-      logger.error(`キーワード生成エラー: ${err.message}`);
-      throw err;
-    }
-  }
-
-  /**
-   * キーワードを更新
-   * @param {string} facilityId - 施設ID
-   * @param {Object} keywordsData - 更新するキーワードデータ
+   * @param {Object} keywordsData - キーワードデータ
+   * @param {string} userId - 更新者のユーザーID
    * @returns {Promise<Object>} 更新されたキーワード
    */
-  static async updateKeywords(facilityId, keywordsData) {
+  async updateKeywords(facilityId, keywordsData, userId) {
     try {
-      const facility = await Facility.getById(facilityId);
-      if (!facility) {
+      logger.info(`キーワード更新開始: 施設ID ${facilityId}`);
+      
+      try {
+        await Facility.getById(facilityId);
+      } catch (err) {
+        logger.error(`施設存在確認エラー: ${err.message}`);
         throw new Error('施設が見つかりません');
       }
       
-      const cleanedKeywords = {
-        menu_service: Array.isArray(keywordsData.menu_service) 
-          ? keywordsData.menu_service.filter(k => k && k.trim() !== '') 
-          : [],
-        environment_facility: Array.isArray(keywordsData.environment_facility) 
-          ? keywordsData.environment_facility.filter(k => k && k.trim() !== '') 
-          : [],
-        recommended_scene: Array.isArray(keywordsData.recommended_scene) 
-          ? keywordsData.recommended_scene.filter(k => k && k.trim() !== '') 
-          : []
-      };
+      this.validateKeywordsData(keywordsData);
       
-      await Keyword.save(facilityId, cleanedKeywords);
+      const keywords = await Keyword.update(facilityId, keywordsData, userId);
       
-      logger.info(`施設ID ${facilityId} のキーワードが更新されました`);
-      return cleanedKeywords;
+      logger.info(`キーワード更新完了: 施設ID ${facilityId}`);
+      return keywords;
     } catch (err) {
-      logger.error(`キーワード更新エラー: ${err.message}`);
+      logger.error(`キーワード更新サービスエラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * キーワードの生成
+   * @param {string} facilityId - 施設ID
+   * @param {string} userId - 生成者のユーザーID
+   * @returns {Promise<Object>} 生成されたキーワード
+   */
+  async generateKeywords(facilityId, userId) {
+    try {
+      logger.info(`キーワード生成開始: 施設ID ${facilityId}`);
+      
+      let facility;
+      try {
+        facility = await Facility.getById(facilityId);
+      } catch (err) {
+        logger.error(`施設存在確認エラー: ${err.message}`);
+        throw new Error('施設が見つかりません');
+      }
+      
+      if (!keywordGenerator) {
+        logger.error('キーワード生成サービスが初期化されていません');
+        throw new Error('キーワード生成サービスが利用できません');
+      }
+      
+      const keywords = await Keyword.generate(facilityId, keywordGenerator, userId);
+      
+      logger.info(`キーワード生成完了: 施設ID ${facilityId}`);
+      return keywords;
+    } catch (err) {
+      logger.error(`キーワード生成サービスエラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * キーワードの削除
+   * @param {string} facilityId - 施設ID
+   * @returns {Promise<Object>} 削除結果
+   */
+  async deleteKeywords(facilityId) {
+    try {
+      logger.info(`キーワード削除開始: 施設ID ${facilityId}`);
+      
+      try {
+        await Facility.getById(facilityId);
+      } catch (err) {
+        logger.error(`施設存在確認エラー: ${err.message}`);
+        throw new Error('施設が見つかりません');
+      }
+      
+      const result = await Keyword.delete(facilityId);
+      
+      logger.info(`キーワード削除完了: 施設ID ${facilityId}`);
+      return result;
+    } catch (err) {
+      logger.error(`キーワード削除サービスエラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * キーワードの統計情報取得
+   * @returns {Promise<Object>} 統計情報
+   */
+  async getKeywordStats() {
+    try {
+      logger.info('キーワード統計情報取得開始');
+      
+      const stats = await Keyword.getStats();
+      
+      logger.info('キーワード統計情報取得完了');
+      return stats;
+    } catch (err) {
+      logger.error(`キーワード統計情報取得サービスエラー: ${err.message}`);
+      throw err;
+    }
+  }
+  
+  /**
+   * キーワードデータの検証
+   * @param {Object} keywordsData - 検証するキーワードデータ
+   * @throws {Error} 検証エラー
+   */
+  validateKeywordsData(keywordsData) {
+    const { menu_service, environment_facility, recommended_scene } = keywordsData;
+    
+    if (menu_service) {
+      if (!Array.isArray(menu_service)) {
+        throw new Error('メニュー・サービスカテゴリはリスト形式で指定してください');
+      }
+      
+      menu_service.forEach((keyword, index) => {
+        if (typeof keyword !== 'string') {
+          throw new Error(`メニュー・サービスカテゴリの項目 ${index + 1} は文字列である必要があります`);
+        }
+        
+        if (keyword.length > 100) {
+          throw new Error(`メニュー・サービスカテゴリの項目 ${index + 1} は100文字以内で入力してください`);
+        }
+      });
+    }
+    
+    if (environment_facility) {
+      if (!Array.isArray(environment_facility)) {
+        throw new Error('環境・設備カテゴリはリスト形式で指定してください');
+      }
+      
+      environment_facility.forEach((keyword, index) => {
+        if (typeof keyword !== 'string') {
+          throw new Error(`環境・設備カテゴリの項目 ${index + 1} は文字列である必要があります`);
+        }
+        
+        if (keyword.length > 100) {
+          throw new Error(`環境・設備カテゴリの項目 ${index + 1} は100文字以内で入力してください`);
+        }
+      });
+    }
+    
+    if (recommended_scene) {
+      if (!Array.isArray(recommended_scene)) {
+        throw new Error('おすすめの利用シーンカテゴリはリスト形式で指定してください');
+      }
+      
+      recommended_scene.forEach((keyword, index) => {
+        if (typeof keyword !== 'string') {
+          throw new Error(`おすすめの利用シーンカテゴリの項目 ${index + 1} は文字列である必要があります`);
+        }
+        
+        if (keyword.length > 100) {
+          throw new Error(`おすすめの利用シーンカテゴリの項目 ${index + 1} は100文字以内で入力してください`);
+        }
+      });
+    }
+  }
+  
+  /**
+   * キーワードのエクスポート
+   * @param {string} facilityId - 施設ID
+   * @param {string} format - エクスポート形式 ('csv' または 'json')
+   * @returns {Promise<Object>} エクスポートデータ
+   */
+  async exportKeywords(facilityId, format = 'json') {
+    try {
+      logger.info(`キーワードエクスポート開始: 施設ID ${facilityId}, 形式 ${format}`);
+      
+      let facility;
+      try {
+        facility = await Facility.getById(facilityId);
+      } catch (err) {
+        logger.error(`施設存在確認エラー: ${err.message}`);
+        throw new Error('施設が見つかりません');
+      }
+      
+      let keywords;
+      try {
+        keywords = await Keyword.getByFacilityId(facilityId);
+      } catch (err) {
+        logger.error(`キーワード取得エラー: ${err.message}`);
+        throw new Error('キーワードが見つかりません');
+      }
+      
+      let exportData;
+      
+      if (format === 'json') {
+        exportData = {
+          facility: {
+            id: facility.id,
+            facility_name: facility.facility_name,
+            business_type: facility.business_type,
+            address: facility.address,
+            phone: facility.phone,
+            business_hours: facility.business_hours,
+            closed_days: facility.closed_days,
+            official_site_url: facility.official_site_url,
+            gbp_url: facility.gbp_url,
+            additional_info: facility.additional_info
+          },
+          keywords: keywords
+        };
+      } else if (format === 'csv') {
+        const records = [];
+        
+        keywords.menu_service.forEach(keyword => {
+          records.push({
+            facility_name: facility.facility_name,
+            business_type: facility.business_type || '',
+            address: facility.address || '',
+            category: 'メニュー・サービス',
+            keyword: keyword
+          });
+        });
+        
+        keywords.environment_facility.forEach(keyword => {
+          records.push({
+            facility_name: facility.facility_name,
+            business_type: facility.business_type || '',
+            address: facility.address || '',
+            category: '環境・設備',
+            keyword: keyword
+          });
+        });
+        
+        keywords.recommended_scene.forEach(keyword => {
+          records.push({
+            facility_name: facility.facility_name,
+            business_type: facility.business_type || '',
+            address: facility.address || '',
+            category: 'おすすめの利用シーン',
+            keyword: keyword
+          });
+        });
+        
+        exportData = records;
+      } else {
+        throw new Error('サポートされていないエクスポート形式です');
+      }
+      
+      logger.info(`キーワードエクスポート完了: 施設ID ${facilityId}, 形式 ${format}`);
+      return exportData;
+    } catch (err) {
+      logger.error(`キーワードエクスポートサービスエラー: ${err.message}`);
       throw err;
     }
   }
 }
 
-export default KeywordService;
+export default new KeywordService();

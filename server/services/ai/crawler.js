@@ -1,178 +1,169 @@
 /**
- * Firecrawl統合サービス
- * Google Business ProfileとWebサイトのクローリング機能を提供します
+ * Firecrawlサービス
+ * Firecrawl APIを使用してウェブサイトやGoogle Business Profileをクロールし、
+ * キーワード生成のための情報を収集します
  */
 
 import axios from 'axios';
 import logger from '../../utils/logger.js';
 
-/**
- * Firecrawlサービスクラス
- */
 class CrawlerService {
   constructor() {
-    this.apiKey = null;
-    this.baseUrl = 'https://api.firecrawl.dev/v1';
+    this.apiKey = process.env.FIRECRAWL_API_KEY;
+    this.apiUrl = 'https://api.firecrawl.dev';
     this.initialized = false;
   }
 
   /**
    * サービスの初期化
-   * @returns {boolean} 初期化成功の可否
+   * APIキーの存在確認を行います
    */
   initialize() {
-    try {
-      const apiKey = process.env.FIRECRAWL_API_KEY || 'fc-31e88675573d49a981e8fde2a3d0f309';
-      
-      if (!apiKey) {
-        logger.error('Firecrawl API Keyが設定されていません');
-        return false;
-      }
-      
-      this.apiKey = apiKey;
-      this.initialized = true;
-      
-      logger.info('Crawlerサービスが初期化されました');
-      return true;
-    } catch (err) {
-      logger.error(`Crawlerサービス初期化エラー: ${err.message}`);
+    if (!this.apiKey) {
+      logger.error('Firecrawl APIキーが設定されていません');
+      this.initialized = false;
       return false;
     }
+
+    this.initialized = true;
+    logger.info('Crawlerサービスが初期化されました');
+    return true;
   }
 
   /**
-   * Google Business Profileをクロール
-   * @param {string} gbpUrl - Google Business ProfileのURL
-   * @returns {Promise<Object>} クロール結果
+   * Google Business Profileのクロール
+   * @param {string} url - Google Business ProfileのURL
+   * @returns {Promise<Object>} - クロール結果
    */
-  async crawlGBP(gbpUrl) {
+  async crawlGBP(url) {
     if (!this.initialized) {
       if (!this.initialize()) {
         throw new Error('Crawlerサービスが初期化されていません');
       }
     }
-    
-    if (!gbpUrl) {
-      throw new Error('Google Business ProfileのURLが指定されていません');
-    }
-    
-    try {
-      logger.info(`Google Business Profileのクロールを開始: ${gbpUrl}`);
-      
-      const response = await axios.post(
-        `${this.baseUrl}/crawl/gbp`,
-        { url: gbpUrl },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (response.status !== 200) {
-        throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
-      }
-      
-      logger.info(`Google Business Profileのクロールが完了: ${gbpUrl}`);
-      return response.data;
-    } catch (err) {
-      logger.error(`GBPクロールエラー: ${err.message}`);
-      throw err;
-    }
-  }
 
-  /**
-   * Webサイトをクロール
-   * @param {string} websiteUrl - WebサイトのURL
-   * @param {Object} options - クロールオプション
-   * @returns {Promise<Object>} クロール結果
-   */
-  async crawlWebsite(websiteUrl, options = {}) {
-    if (!this.initialized) {
-      if (!this.initialize()) {
-        throw new Error('Crawlerサービスが初期化されていません');
-      }
+    if (!url) {
+      logger.warn('Google Business ProfileのURLが指定されていません');
+      return null;
     }
-    
-    if (!websiteUrl) {
-      throw new Error('WebサイトのURLが指定されていません');
-    }
-    
+
     try {
-      logger.info(`Webサイトのクロールを開始: ${websiteUrl}`);
-      
-      const defaultOptions = {
-        maxPages: 10,
-        maxDepth: 2,
-        includeImages: true
-      };
-      
-      const mergedOptions = { ...defaultOptions, ...options };
-      
       const response = await axios.post(
-        `${this.baseUrl}/crawl/website`,
+        `${this.apiUrl}/crawl`,
         {
-          url: websiteUrl,
-          maxPages: mergedOptions.maxPages,
-          maxDepth: mergedOptions.maxDepth,
-          includeImages: mergedOptions.includeImages
+          url: url,
+          selector: 'body',
+          wait_for: '.gm2-subtitle-alt-1',
+          extract_metadata: true
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
           }
         }
       );
+
+      logger.info(`Google Business Profileのクロールが完了しました: ${url}`);
       
-      if (response.status !== 200) {
-        throw new Error(`APIエラー: ${response.status} ${response.statusText}`);
+      return {
+        title: response.data.metadata?.title || '',
+        description: response.data.metadata?.description || '',
+        content: response.data.content || ''
+      };
+    } catch (error) {
+      logger.error(`Google Business Profileのクロールエラー: ${error.message}`);
+      if (error.response) {
+        logger.error(`ステータスコード: ${error.response.status}`);
+        logger.error(`レスポンスデータ: ${JSON.stringify(error.response.data)}`);
       }
-      
-      logger.info(`Webサイトのクロールが完了: ${websiteUrl}`);
-      return response.data;
-    } catch (err) {
-      logger.error(`Webサイトクロールエラー: ${err.message}`);
-      throw err;
+      return null;
     }
   }
 
   /**
-   * クロール結果からテキストデータを抽出
-   * @param {Object} crawlResult - クロール結果
-   * @returns {string} 抽出されたテキスト
+   * ウェブサイトのクロール
+   * @param {string} url - ウェブサイトのURL
+   * @returns {Promise<Object>} - クロール結果
    */
-  extractTextFromCrawl(crawlResult) {
+  async crawlWebsite(url) {
+    if (!this.initialized) {
+      if (!this.initialize()) {
+        throw new Error('Crawlerサービスが初期化されていません');
+      }
+    }
+
+    if (!url) {
+      logger.warn('ウェブサイトのURLが指定されていません');
+      return null;
+    }
+
     try {
-      let extractedText = '';
+      const response = await axios.post(
+        `${this.apiUrl}/crawl`,
+        {
+          url: url,
+          selector: 'body',
+          extract_metadata: true,
+          follow_links: true,
+          max_pages: 5,
+          same_domain: true
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          }
+        }
+      );
+
+      logger.info(`ウェブサイトのクロールが完了しました: ${url}`);
       
-      if (crawlResult.title) {
-        extractedText += `タイトル: ${crawlResult.title}\n\n`;
+      return {
+        title: response.data.metadata?.title || '',
+        description: response.data.metadata?.description || '',
+        content: response.data.content || ''
+      };
+    } catch (error) {
+      logger.error(`ウェブサイトのクロールエラー: ${error.message}`);
+      if (error.response) {
+        logger.error(`ステータスコード: ${error.response.status}`);
+        logger.error(`レスポンスデータ: ${JSON.stringify(error.response.data)}`);
       }
-      
-      if (crawlResult.description) {
-        extractedText += `説明: ${crawlResult.description}\n\n`;
-      }
-      
-      if (crawlResult.content) {
-        extractedText += `コンテンツ:\n${crawlResult.content}\n\n`;
-      }
-      
-      if (crawlResult.pages && Array.isArray(crawlResult.pages)) {
-        crawlResult.pages.forEach((page, index) => {
-          extractedText += `ページ ${index + 1}:\n`;
-          extractedText += `URL: ${page.url}\n`;
-          extractedText += `タイトル: ${page.title || '不明'}\n`;
-          extractedText += `コンテンツ: ${page.content || '不明'}\n\n`;
-        });
-      }
-      
-      return extractedText.trim();
-    } catch (err) {
-      logger.error(`テキスト抽出エラー: ${err.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * クロールデータからテキスト抽出
+   * @param {Object} crawlData - クロールデータ
+   * @returns {string} - 抽出されたテキスト
+   */
+  extractTextFromCrawl(crawlData) {
+    if (!crawlData) {
       return '';
     }
+
+    let extractedText = '';
+
+    if (crawlData.title) {
+      extractedText += `タイトル: ${crawlData.title}\n`;
+    }
+
+    if (crawlData.description) {
+      extractedText += `説明: ${crawlData.description}\n`;
+    }
+
+    if (crawlData.content) {
+      const contentText = crawlData.content
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      extractedText += `コンテンツ: ${contentText}\n`;
+    }
+
+    return extractedText;
   }
 }
 

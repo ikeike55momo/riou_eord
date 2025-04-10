@@ -1,89 +1,202 @@
 /**
- * キーワード関連のルーティング
+ * キーワードルーティング
+ * キーワード生成と管理のためのAPIエンドポイント
  */
 
 import express from 'express';
 import Keyword from '../models/keyword.js';
 import Facility from '../models/facility.js';
 import logger from '../utils/logger.js';
-import { validateInput } from '../middleware/security.js';
+
+import keywordGenerator from '../services/ai/keyword-generator.js';
 
 const router = express.Router();
 
-const keywordsValidationRules = {
-  menu_service: { type: 'array' },
-  environment_facility: { type: 'array' },
-  recommended_scene: { type: 'array' }
-};
-
 /**
- * 施設IDに関連するキーワードを取得
+ * 施設IDに基づくキーワードの取得
  * GET /api/keywords/:facilityId
  */
 router.get('/:facilityId', async (req, res) => {
   try {
-    const facilityId = req.params.facilityId;
-    
-    const facility = await Facility.getById(facilityId);
-    if (!facility) {
-      return res.status(404).json({ error: '施設が見つかりません' });
-    }
+    const { facilityId } = req.params;
     
     const keywords = await Keyword.getByFacilityId(facilityId);
-    res.json(keywords);
+    
+    res.json({
+      success: true,
+      data: keywords
+    });
   } catch (err) {
     logger.error(`キーワード取得エラー: ${err.message}`);
-    res.status(500).json({ error: 'キーワードの取得に失敗しました' });
+    
+    if (err.message === 'キーワードが見つかりません') {
+      return res.status(404).json({
+        success: false,
+        error: 'キーワードが見つかりません',
+        message: err.message
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'キーワードの取得に失敗しました',
+      message: err.message
+    });
   }
 });
 
 /**
- * キーワードを生成
+ * キーワードの更新
+ * PUT /api/keywords/:facilityId
+ */
+router.put('/:facilityId', async (req, res) => {
+  try {
+    const { facilityId } = req.params;
+    const keywordsData = req.body;
+    
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: '認証が必要です',
+        message: 'ユーザーIDが見つかりません'
+      });
+    }
+    
+    try {
+      await Facility.getById(facilityId);
+    } catch (err) {
+      return res.status(404).json({
+        success: false,
+        error: '施設が見つかりません',
+        message: '指定された施設が存在しません'
+      });
+    }
+    
+    const keywords = await Keyword.update(facilityId, keywordsData, userId);
+    
+    res.json({
+      success: true,
+      data: keywords
+    });
+  } catch (err) {
+    logger.error(`キーワード更新エラー: ${err.message}`);
+    res.status(400).json({
+      success: false,
+      error: 'キーワードの更新に失敗しました',
+      message: err.message
+    });
+  }
+});
+
+/**
+ * キーワードの生成
  * POST /api/keywords/generate/:facilityId
  */
 router.post('/generate/:facilityId', async (req, res) => {
   try {
-    const facilityId = req.params.facilityId;
+    const { facilityId } = req.params;
     
-    const facility = await Facility.getById(facilityId);
-    if (!facility) {
-      return res.status(404).json({ error: '施設が見つかりません' });
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: '認証が必要です',
+        message: 'ユーザーIDが見つかりません'
+      });
     }
     
-    const dummyKeywords = {
-      menu_service: ['ランチセット', 'ディナーコース', '季節の料理'],
-      environment_facility: ['テラス席あり', '個室完備', 'Wi-Fi利用可'],
-      recommended_scene: ['デート', '接待', '家族での食事']
-    };
+    try {
+      await Facility.getById(facilityId);
+    } catch (err) {
+      return res.status(404).json({
+        success: false,
+        error: '施設が見つかりません',
+        message: '指定された施設が存在しません'
+      });
+    }
     
-    await Keyword.save(facilityId, dummyKeywords);
+    const keywords = await Keyword.generate(facilityId, keywordGenerator, userId);
     
-    res.json(dummyKeywords);
+    res.json({
+      success: true,
+      data: keywords
+    });
   } catch (err) {
     logger.error(`キーワード生成エラー: ${err.message}`);
-    res.status(500).json({ error: 'キーワードの生成に失敗しました' });
+    res.status(500).json({
+      success: false,
+      error: 'キーワードの生成に失敗しました',
+      message: err.message
+    });
   }
 });
 
 /**
- * キーワードを更新
- * PUT /api/keywords/:facilityId
+ * キーワードの削除
+ * DELETE /api/keywords/:facilityId
  */
-router.put('/:facilityId', validateInput(keywordsValidationRules), async (req, res) => {
+router.delete('/:facilityId', async (req, res) => {
   try {
-    const facilityId = req.params.facilityId;
-    const keywordsData = req.body;
+    const { facilityId } = req.params;
     
-    const facility = await Facility.getById(facilityId);
-    if (!facility) {
-      return res.status(404).json({ error: '施設が見つかりません' });
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: '認証が必要です',
+        message: 'ユーザーIDが見つかりません'
+      });
     }
     
-    const savedKeywords = await Keyword.save(facilityId, keywordsData);
-    res.json(savedKeywords);
+    try {
+      await Facility.getById(facilityId);
+    } catch (err) {
+      return res.status(404).json({
+        success: false,
+        error: '施設が見つかりません',
+        message: '指定された施設が存在しません'
+      });
+    }
+    
+    await Keyword.delete(facilityId);
+    
+    res.json({
+      success: true,
+      message: 'キーワードが削除されました'
+    });
   } catch (err) {
-    logger.error(`キーワード更新エラー: ${err.message}`);
-    res.status(500).json({ error: 'キーワードの更新に失敗しました' });
+    logger.error(`キーワード削除エラー: ${err.message}`);
+    res.status(500).json({
+      success: false,
+      error: 'キーワードの削除に失敗しました',
+      message: err.message
+    });
+  }
+});
+
+/**
+ * キーワードの統計情報取得
+ * GET /api/keywords/stats
+ */
+router.get('/stats/summary', async (req, res) => {
+  try {
+    const stats = await Keyword.getStats();
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (err) {
+    logger.error(`キーワード統計情報取得エラー: ${err.message}`);
+    res.status(500).json({
+      success: false,
+      error: 'キーワード統計情報の取得に失敗しました',
+      message: err.message
+    });
   }
 });
 
