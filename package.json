@@ -9,6 +9,10 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives",
     "preview": "vite preview",
     "test": "mocha server/test/**/*.test.js --timeout 10000 --exit",
+    "test:frontend": "mocha tests/unit/frontend/**/*.test.js --timeout 10000 --exit",
+    "test:backend": "mocha tests/unit/backend/**/*.test.js --timeout 10000 --exit",
+    "test:integration": "mocha tests/integration/**/*.test.js --timeout 10000 --exit",
+    "test:e2e": "mocha tests/e2e/**/*.test.js --timeout 10000 --exit",
     "start:server": "node server/server.js",
     "dev:server": "nodemon server/server.js"
   },
@@ -51,4 +55,4 @@
     "tailwindcss": "^3.4.1",
     "vite": "^5.1.6"
   }
-}  
+}    
