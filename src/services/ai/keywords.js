@@ -118,7 +118,7 @@ router.get('/:facilityId', requireAuth, async (req, res) => {
     };
     
     data.forEach(item => {
-      if (keywords.hasOwnProperty(item.category)) {
+      if (Object.prototype.hasOwnProperty.call(keywords, item.category)) {
         keywords[item.category] = item.keywords;
       }
     });
