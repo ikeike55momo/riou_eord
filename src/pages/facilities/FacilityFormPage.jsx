@@ -82,6 +82,7 @@ const FacilityFormPage = () => {
         const response = await api.facilities.create(formData);
         setSuccessMessage('施設が登録されました');
         
+        // 新規作成後、編集画面にリダイレクト
         setTimeout(() => {
           navigate(`/facilities/${response.data.facility_id}`);
         }, 1500);
@@ -92,6 +93,7 @@ const FacilityFormPage = () => {
     } finally {
       setSubmitting(false);
       
+      // 成功メッセージを一定時間後に消す
       if (successMessage) {
         setTimeout(() => {
           setSuccessMessage('');
