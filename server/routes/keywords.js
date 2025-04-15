@@ -4,9 +4,9 @@
  */
 
 import express from 'express';
-import Keyword from '../models/keyword.js';
-import Facility from '../models/facility.js';
+import keywordService from '../services/keyword.js';
 import logger from '../utils/logger.js';
+import security from '../middleware/security.js';
 
 import keywordGenerator from '../services/ai/keyword-generator.js';
 
@@ -15,12 +15,13 @@ const router = express.Router();
 /**
  * 施設IDに基づくキーワードの取得
  * GET /api/keywords/:facilityId
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.get('/:facilityId', async (req, res) => {
+router.get('/:facilityId', security.authMiddleware, async (req, res) => {
   try {
     const { facilityId } = req.params;
     
-    const keywords = await Keyword.getByFacilityId(facilityId);
+    const keywords = await keywordService.getByFacilityId(facilityId);
     
     res.json({
       success: true,
@@ -48,31 +49,13 @@ router.get('/:facilityId', async (req, res) => {
 /**
  * キーワードの更新
  * PUT /api/keywords/:facilityId
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.put('/:facilityId', async (req, res) => {
+router.put('/:facilityId', security.authMiddleware, async (req, res) => {
   try {
     const { facilityId } = req.params;
     const keywordsData = req.body;
-    
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: '認証が必要です',
-        message: 'ユーザーIDが見つかりません'
-      });
-    }
-    
-    try {
-      await Facility.getById(facilityId);
-    } catch (err) {
-      return res.status(404).json({
-        success: false,
-        error: '施設が見つかりません',
-        message: '指定された施設が存在しません'
-      });
-    }
+    const userId = req.auth.id;
     
     const keywords = await Keyword.update(facilityId, keywordsData, userId);
     
@@ -93,30 +76,12 @@ router.put('/:facilityId', async (req, res) => {
 /**
  * キーワードの生成
  * POST /api/keywords/generate/:facilityId
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.post('/generate/:facilityId', async (req, res) => {
+router.post('/generate/:facilityId', security.authMiddleware, async (req, res) => {
   try {
     const { facilityId } = req.params;
-    
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: '認証が必要です',
-        message: 'ユーザーIDが見つかりません'
-      });
-    }
-    
-    try {
-      await Facility.getById(facilityId);
-    } catch (err) {
-      return res.status(404).json({
-        success: false,
-        error: '施設が見つかりません',
-        message: '指定された施設が存在しません'
-      });
-    }
+    const userId = req.auth.id;
     
     const keywords = await Keyword.generate(facilityId, keywordGenerator, userId);
     
@@ -137,32 +102,12 @@ router.post('/generate/:facilityId', async (req, res) => {
 /**
  * キーワードの削除
  * DELETE /api/keywords/:facilityId
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.delete('/:facilityId', async (req, res) => {
+router.delete('/:facilityId', security.authMiddleware, async (req, res) => {
   try {
     const { facilityId } = req.params;
-    
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: '認証が必要です',
-        message: 'ユーザーIDが見つかりません'
-      });
-    }
-    
-    try {
-      await Facility.getById(facilityId);
-    } catch (err) {
-      return res.status(404).json({
-        success: false,
-        error: '施設が見つかりません',
-        message: '指定された施設が存在しません'
-      });
-    }
-    
-    await Keyword.delete(facilityId);
+    await keywordService.delete(facilityId);
     
     res.json({
       success: true,
@@ -180,9 +125,10 @@ router.delete('/:facilityId', async (req, res) => {
 
 /**
  * キーワードの統計情報取得
- * GET /api/keywords/stats
+ * GET /api/keywords/stats/summary
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.get('/stats/summary', async (req, res) => {
+router.get('/stats/summary', security.authMiddleware, async (req, res) => {
   try {
     const stats = await Keyword.getStats();
     

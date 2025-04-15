@@ -1,9 +1,11 @@
 // backend/middleware/security.js
 import helmet from 'helmet';
 import csrf from 'csurf';
+import { createClient } from '@supabase/supabase-js';
 import rateLimit from 'express-rate-limit';
 import { validationResult } from 'express-validator';
 import logger from '../utils/logger.js';
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 // CSRFミドルウェア
 const csrfProtection = csrf({ cookie: true });
@@ -16,6 +18,45 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'リクエスト数が多すぎます。しばらく経ってから再試行してください。' }
 });
+
+/**
+ * ユーザー認証ミドルウェア
+ * リクエストヘッダーからトークンを検証し、ユーザー情報をreq.userに設定する。
+ */
+const authMiddleware = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      logger.warn('認証トークンがありません', { path: req.path, ip: req.ip });
+      return res.status(401).json({ error: '認証が必要です' });
+    }
+
+    const { data, error } = await supabase.auth.getUser(token);
+    
+    if (error || !data.user) {
+      logger.error(`トークン検証エラー: ${error?.message}`, { path: req.path, ip: req.ip });
+      return res.status(401).json({ error: '認証に失敗しました' });
+    }
+    
+    req.auth = data.user;
+
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('role').eq('auth_id', data.user.id).single();
+
+    if (profileError) {
+      logger.error(`ユーザープロファイル取得エラー: ${profileError.message}`, { path: req.path, ip: req.ip });
+      return res.status(401).json({ error: '認証に失敗しました' });
+    }
+    
+    if (profile.role !== 'admin') {
+      logger.warn('管理者権限が必要です', { path: req.path, ip: req.ip, user: data.user.id });
+      return res.status(403).json({ error: '管理者権限が必要です' });
+    }
+    next();
+  } catch (err) {
+    logger.error(`認証ミドルウェアエラー: ${err.message}`, { path: req.path, ip: req.ip });
+    res.status(500).json({ error: 'サーバーエラーが発生しました' });
+  }
+};
 
 // 入力バリデーションチェックミドルウェア
 const validateInput = (req, res, next) => {
@@ -81,6 +122,7 @@ const setupSecurity = (app) => {
   
   return {
     csrfProtection,
+    authMiddleware,
     validateInput,
     errorHandler
   };

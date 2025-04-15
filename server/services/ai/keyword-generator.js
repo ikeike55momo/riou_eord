@@ -1,140 +1,77 @@
 /**
  * キーワード生成サービス
- * GPTサービスとCrawlerサービスを組み合わせて、施設情報に基づいたキーワードを生成します
+ * 施設情報からAIを使用してキーワードを生成します
  */
 
-import gptService from './gpt.js';
-import crawlerService from './crawler.js';
-import errorHandler from './error-handler.js';
+import { OpenAI } from 'openai';
 import logger from '../../utils/logger.js';
 
-class KeywordGeneratorService {
-  constructor() {
-    this.gptService = gptService;
-    this.crawlerService = crawlerService;
-    this.errorHandler = errorHandler;
-  }
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-  /**
-   * サービスの初期化
-   */
-  initialize() {
-    const gptInitialized = this.gptService.initialize();
-    const crawlerInitialized = this.crawlerService.initialize();
+const systemMessage = `
+あなたはプロのレストランコンサルタントです。与えられた施設の情報から最適なキーワードを生成します。
 
-    if (!gptInitialized || !crawlerInitialized) {
-      logger.error('キーワード生成サービスの初期化に失敗しました');
-      return false;
-    }
+以下の制約条件と出力形式を厳密に守ってください。
 
-    logger.info('キーワード生成サービスが初期化されました');
-    return true;
-  }
+制約条件：
+- 施設情報は、JSON形式で与えられます。
+- 提供された施設情報の範囲内でキーワードを生成してください。
+- キーワードは必ず３つのカテゴリに分けてください。
+- キーワードは、1単語から３単語の範囲にしてください。
+- キーワードは、最大で50個までにしてください。
+- 生成するキーワードは、日本語で出力してください。
 
-  /**
-   * 施設情報に基づいてキーワードを生成
-   * @param {Object} facility - 施設情報
-   * @returns {Promise<Object>} - 生成されたキーワード
-   */
-  async generateKeywords(facility) {
-    try {
-      if (!facility) {
-        throw new Error('施設情報が提供されていません');
-      }
-
-      logger.info(`施設「${facility.facility_name}」のキーワード生成を開始します`);
-
-      const crawlData = await this.collectCrawlData(facility);
-
-      const prompt = this.gptService.createKeywordPrompt(facility, crawlData);
-
-      const generatedText = await this.gptService.generateText(prompt);
-
-      let keywords;
-      try {
-        keywords = JSON.parse(generatedText);
-      } catch (error) {
-        logger.error(`生成されたテキストのJSON解析エラー: ${error.message}`);
-        logger.error(`生成されたテキスト: ${generatedText}`);
-        throw new Error('生成されたテキストの形式が不正です');
-      }
-
-      const validatedKeywords = this.validateAndFormatKeywords(keywords);
-
-      logger.info(`施設「${facility.facility_name}」のキーワード生成が完了しました`);
-      return validatedKeywords;
-    } catch (error) {
-      return this.errorHandler.handleKeywordGenerationError(error, facility);
-    }
-  }
-
-  /**
-   * 施設情報からクロールデータを収集
-   * @param {Object} facility - 施設情報
-   * @returns {Promise<Object>} - 収集されたクロールデータ
-   */
-  async collectCrawlData(facility) {
-    const crawlData = {
-      website: null,
-      gbp: null
-    };
-
-    if (facility.official_site_url) {
-      try {
-        crawlData.website = await this.crawlerService.crawlWebsite(facility.official_site_url);
-        logger.info(`公式サイトのクロールが完了しました: ${facility.official_site_url}`);
-      } catch (error) {
-        logger.warn(`公式サイトのクロールに失敗しました: ${error.message}`);
-      }
-    }
-
-    if (facility.gbp_url) {
-      try {
-        crawlData.gbp = await this.crawlerService.crawlGBP(facility.gbp_url);
-        logger.info(`GBPのクロールが完了しました: ${facility.gbp_url}`);
-      } catch (error) {
-        logger.warn(`GBPのクロールに失敗しました: ${error.message}`);
-      }
-    }
-
-    return crawlData;
-  }
-
-  /**
-   * キーワードの検証と整形
-   * @param {Object} keywords - 生成されたキーワード
-   * @returns {Object} - 検証・整形されたキーワード
-   */
-  validateAndFormatKeywords(keywords) {
-    const validatedKeywords = {
-      menu_service: [],
-      environment_facility: [],
-      recommended_scene: []
-    };
-
-    if (Array.isArray(keywords.menu_service)) {
-      validatedKeywords.menu_service = keywords.menu_service
-        .filter(keyword => keyword && typeof keyword === 'string')
-        .map(keyword => keyword.trim())
-        .filter(keyword => keyword.length > 0);
-    }
-
-    if (Array.isArray(keywords.environment_facility)) {
-      validatedKeywords.environment_facility = keywords.environment_facility
-        .filter(keyword => keyword && typeof keyword === 'string')
-        .map(keyword => keyword.trim())
-        .filter(keyword => keyword.length > 0);
-    }
-
-    if (Array.isArray(keywords.recommended_scene)) {
-      validatedKeywords.recommended_scene = keywords.recommended_scene
-        .filter(keyword => keyword && typeof keyword === 'string')
-        .map(keyword => keyword.trim())
-        .filter(keyword => keyword.length > 0);
-    }
-
-    return validatedKeywords;
-  }
+出力形式：
+\`\`\`json
+{
+  "menu_service": [
+    "キーワード１",
+    "キーワード２",
+    ...
+  ],
+  "environment_facility": [
+    "キーワード１",
+    "キーワード２",
+    ...
+  ],
+  "recommended_scene": [
+    "キーワード１",
+    "キーワード２",
+    ...
+  ]
 }
+\`\`\`
+`;
 
-export default new KeywordGeneratorService();
+/**
+ * 施設情報に基づいたキーワードを生成する
+ * @param {Object} facility - 施設情報
+ * @returns {Promise<Object>} - 生成されたキーワード
+ */
+const generateKeywords = async (facility) => {
+  if (!facility) {
+    throw new Error('施設情報が提供されていません');
+  }
+
+  logger.info(`施設「${facility.facility_name}」のキーワード生成を開始します`);
+
+  const userMessage = JSON.stringify(facility, null, 2);
+
+  const chatCompletion = await openai.chat.completions.create({
+    messages: [
+      { role: 'system', content: systemMessage },
+      { role: 'user', content: userMessage },
+    ],
+    model: 'gpt-4-1106-preview',
+  });
+
+  const generatedText = chatCompletion.choices[0].message.content;
+
+  let keywords = JSON.parse(generatedText)
+  logger.info(`施設「${facility.facility_name}」のキーワード生成が完了しました`);
+  return keywords;
+  }
+
+export default { generateKeywords };

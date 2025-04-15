@@ -2,23 +2,55 @@
 
 ## 現在の実装状況
 
-### 移行済みファイル
-1. フロントエンド（keyword-suggestion-app/）：
-   - src/App.jsx
-   - src/contexts/AuthContext.jsx
-   - src/services/api.js
-   - .env.development
-   - .env.production
-   - vite.config.js
-   - postcss.config.js
-   - tailwind.config.js
-   - netlify.toml
-   - package.json
+### 実装済みファイル
+#### フロントエンド (src/)
+- App.jsx
+- config/supabase.js
+- contexts/AuthContext.jsx
+- index.css
+- main.jsx
+- pages/NotFoundPage.jsx
+- services/api.js
+- components/layout/Layout.jsx
+- components/layout/Navbar.jsx
+- components/layout/Sidebar.jsx
+- pages/auth/LoginPage.jsx
+- pages/facilities/FacilitiesListPage.jsx
+- pages/facilities/FacilityFormPage.jsx
+- pages/keywords/KeywordGenerationPage.jsx
+- services/ai/aiAgentService.js
+- services/ai/crawlService.js
+- services/ai/keywords.js
+- services/api/auth.js
+- services/api/facilities.js
+- services/api/facilitiesService.js
+- services/utils/export.js
+- services/utils/logger.js
+- services/utils/validators.js
+- package.json
+- vite.config.js
+- postcss.config.js
+- tailwind.config.js
+- netlify.toml
 
-2. バックエンド（keyword-suggestion-app/server/）：
-   - server.js
-   - middleware/security.js
-   - db/schema.sql
+#### バックエンド (server/)
+- server.js
+- db/schema.sql
+- middleware/security.js
+- models/facility.js
+- models/keyword.js
+- models/user.js
+- routes/export.js
+- routes/facilities.js
+- routes/keywords.js
+- services/auth.js
+- services/facility.js
+- services/keyword.js
+- utils/logger.js
+- services/ai/crawler.js
+- services/ai/error-handler.js
+- services/ai/gpt.js
+- services/ai/keyword-generator.js
 
 ## 今後のタスク（優先順位順）
 

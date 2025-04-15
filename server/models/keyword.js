@@ -6,6 +6,15 @@
 import { createClient } from '@supabase/supabase-js';
 import logger from '../utils/logger.js';
 
+/**
+ * @typedef {Object} Keyword
+ * @property {number} id - キーワードID（主キー）
+ * @property {number} facility_id - 施設ID（外部キー、facilities.idを参照）
+ * @property {string} keyword - キーワード
+ * @property {Date} created_at - 作成日時
+ * @property {Date} updated_at - 更新日時
+ */
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -15,7 +24,45 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  */
 class Keyword {
   /**
-   * 施設IDに基づくキーワードの取得
+   * キーワードの作成
+   * @param {Object} keywordData - キーワードデータ
+   * @param {string} userId - 作成者のユーザーID
+   * @returns {Promise<Object>} 作成されたキーワード
+   */
+  async create(keywordData, userId) {
+    const { facility_id, keyword } = keywordData;
+    if (!facility_id || !keyword) {
+      throw new Error("必須項目が足りません");
+    }
+    
+    
+    try {
+      if (!userId) {
+        throw new Error('ユーザーIDは必須です');
+      }
+
+      const newKeyword = {
+        ...keywordData,
+        created_by: userId,
+        updated_by: userId,
+        };
+
+      const { data, error } = await supabase.from('keywords').insert(newKeyword).select().single();
+
+      if (error) {
+        logger.error(`キーワード作成エラー: ${error.message}`);
+        throw error;
+      }
+
+      return data;
+    } catch (err) {
+      logger.error(`キーワード作成処理エラー: ${err.message}`);
+      throw err;
+    }
+  }
+
+  /**
+   * 施設IDに基づいてキーワードを取得する
    * @param {string} facilityId - 施設ID
    * @returns {Promise<Object>} キーワード情報
    */
@@ -28,39 +75,37 @@ class Keyword {
       const { data, error } = await supabase
         .from('keywords')
         .select('*')
-        .eq('facility_id', facilityId)
-        .order('category', { ascending: true });
-      
+        .eq('facility_id', facilityId);
+        
       if (error) {
         logger.error(`キーワード取得エラー: ${error.message}`);
         throw error;
       }
-      
-      if (!data || data.length === 0) {
-        logger.warn(`キーワードが見つかりません: 施設ID ${facilityId}`);
-        throw new Error('キーワードが見つかりません');
-      }
-      
-      const keywords = {
-        menu_service: [],
-        environment_facility: [],
-        recommended_scene: []
-      };
-      
-      data.forEach(item => {
-        if (item.category === 'menu_service') {
-          keywords.menu_service.push(item.keyword);
-        } else if (item.category === 'environment_facility') {
-          keywords.environment_facility.push(item.keyword);
-        } else if (item.category === 'recommended_scene') {
-          keywords.recommended_scene.push(item.keyword);
-        }
-      });
-      
-      return keywords;
+      return data;
     } catch (err) {
       logger.error(`キーワード取得処理エラー: ${err.message}`);
       throw err;
+    }
+  }
+
+   /**
+   * 施設IDに基づいてキーワードを削除する
+   * @param {string} facilityId - 施設ID
+   * @returns {Promise<{ success: boolean }>} - 削除が成功したかどうか
+   */
+    async deleteByFacilityId(facilityId) {
+    try {
+      if (!facilityId) {
+        throw new Error('施設IDは必須です');
+      }
+      
+      const { error } = await supabase.from('keywords').delete().eq('facility_id', facilityId);
+      if (error) {
+        throw new Error(`キーワード削除エラー: ${error.message}`);
+      }
+      return { success: true };
+    } catch (err) {
+      throw new Error(`キーワード削除処理エラー: ${err.message}`);
     }
   }
   
@@ -97,53 +142,46 @@ class Keyword {
       const timestamp = new Date();
       
       if (menu_service && Array.isArray(menu_service)) {
-        menu_service.forEach(keyword => {
-          if (keyword && keyword.trim()) {
             keywordsToInsert.push({
               facility_id: facilityId,
               category: 'menu_service',
               keyword: keyword.trim(),
               created_by: userId,
               updated_by: userId,
-              created_at: timestamp,
-              updated_at: timestamp,
+              // created_at: timestamp,
+              // updated_at: timestamp,
               generation_timestamp: timestamp
             });
-          }
-        });
+        
       }
       
       if (environment_facility && Array.isArray(environment_facility)) {
-        environment_facility.forEach(keyword => {
-          if (keyword && keyword.trim()) {
+        environment_facility.forEach(keyword => {          
             keywordsToInsert.push({
               facility_id: facilityId,
               category: 'environment_facility',
               keyword: keyword.trim(),
               created_by: userId,
               updated_by: userId,
-              created_at: timestamp,
-              updated_at: timestamp,
+              // created_at: timestamp,
+              // updated_at: timestamp,
               generation_timestamp: timestamp
             });
-          }
         });
       }
       
       if (recommended_scene && Array.isArray(recommended_scene)) {
-        recommended_scene.forEach(keyword => {
-          if (keyword && keyword.trim()) {
+        recommended_scene.forEach(keyword => {          
             keywordsToInsert.push({
               facility_id: facilityId,
               category: 'recommended_scene',
               keyword: keyword.trim(),
               created_by: userId,
               updated_by: userId,
-              created_at: timestamp,
-              updated_at: timestamp,
+              // created_at: timestamp,
+              // updated_at: timestamp,
               generation_timestamp: timestamp
             });
-          }
         });
       }
       
@@ -165,7 +203,8 @@ class Keyword {
         environment_facility: environment_facility || [],
         recommended_scene: recommended_scene || []
       };
-    } catch (err) {
+    }
+    catch (err) {
       logger.error(`キーワード更新処理エラー: ${err.message}`);
       throw err;
     }
@@ -295,5 +334,5 @@ class Keyword {
     }
   }
 }
-
+// new キーワードモデルのインスタンスを作成してエクスポート
 export default new Keyword();

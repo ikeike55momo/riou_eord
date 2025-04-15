@@ -4,24 +4,26 @@
  */
 
 import express from 'express';
-import Facility from '../models/facility.js';
+import facilityService from '../services/facility.js';
 import logger from '../utils/logger.js';
+import security from '../middleware/security.js';
 
 const router = express.Router();
 
 /**
  * 施設一覧の取得
  * GET /api/facilities
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.get('/', async (req, res) => {
+router.get('/', security.authMiddleware, async (req, res) => {
   try {
     const { limit, offset, business_type, search } = req.query;
-    
-    const userId = req.user?.id;
-    
+
+    const userId = req.auth.id;
+
     const options = {
       limit: limit ? parseInt(limit, 10) : 100,
-      offset: offset ? parseInt(offset, 10) : 0
+      offset: offset ? parseInt(offset, 10) : 0,
     };
     
     if (business_type) {
@@ -32,7 +34,7 @@ router.get('/', async (req, res) => {
       options.searchTerm = search;
     }
     
-    const facilities = await Facility.list(options);
+    const facilities = await facilityService.list(options);
     
     res.json({
       success: true,
@@ -56,12 +58,13 @@ router.get('/', async (req, res) => {
 /**
  * 施設の取得
  * GET /api/facilities/:id
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', security.authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const facility = await Facility.getById(id);
+    const facility = await facilityService.getById(id);
     
     res.json({
       success: true,
@@ -89,25 +92,18 @@ router.get('/:id', async (req, res) => {
 /**
  * 施設の作成
  * POST /api/facilities
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.post('/', async (req, res) => {
+router.post('/', security.authMiddleware, async (req, res) => {
   try {
     const facilityData = req.body;
-    
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: '認証が必要です',
-        message: 'ユーザーIDが見つかりません'
-      });
-    }
-    
-    const facility = await Facility.create(facilityData, userId);
-    
+    const userId = req.auth.id;
+
+    const facility = await facilityService.create(facilityData, userId);
+
     res.status(201).json({
       success: true,
+
       data: facility
     });
   } catch (err) {
@@ -123,25 +119,19 @@ router.post('/', async (req, res) => {
 /**
  * 施設の更新
  * PUT /api/facilities/:id
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', security.authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const facilityData = req.body;
-    
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: '認証が必要です',
-        message: 'ユーザーIDが見つかりません'
-      });
-    }
-    
-    const facility = await Facility.update(id, facilityData, userId);
-    
+
+    const userId = req.auth.id;
+
+    const facility = await facilityService.update(id, facilityData, userId);
+
     res.json({
+
       success: true,
       data: facility
     });
@@ -167,22 +157,16 @@ router.put('/:id', async (req, res) => {
 /**
  * 施設の削除
  * DELETE /api/facilities/:id
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', security.authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const userId = req.user?.id;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        error: '認証が必要です',
-        message: 'ユーザーIDが見つかりません'
-      });
-    }
-    
-    await Facility.delete(id);
+
+    const userId = req.auth.id;
+
+    await facilityService.delete(id);
+
     
     res.json({
       success: true,
@@ -210,10 +194,11 @@ router.delete('/:id', async (req, res) => {
 /**
  * 業種一覧の取得
  * GET /api/facilities/business-types
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.get('/business-types/list', async (req, res) => {
+router.get('/business-types/list', security.authMiddleware, async (req, res) => {
   try {
-    const businessTypes = await Facility.getBusinessTypes();
+    const businessTypes = await facilityService.getBusinessTypes();
     
     res.json({
       success: true,
@@ -232,10 +217,11 @@ router.get('/business-types/list', async (req, res) => {
 /**
  * 施設の統計情報取得
  * GET /api/facilities/stats
+ * @param security.authMiddleware - 認証ミドルウェア
  */
-router.get('/stats/summary', async (req, res) => {
+router.get('/stats/summary', security.authMiddleware, async (req, res) => {
   try {
-    const stats = await Facility.getStats();
+    const stats = await facilityService.getStats();
     
     res.json({
       success: true,

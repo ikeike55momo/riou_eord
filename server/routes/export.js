@@ -7,15 +7,14 @@ import express from 'express';
 import Facility from '../models/facility.js';
 import Keyword from '../models/keyword.js';
 import logger from '../utils/logger.js';
+import security from '../middleware/security.js';
 import { createObjectCsvStringifier } from 'csv-writer';
 
 const router = express.Router();
 
 /**
  * CSVエクスポート
- * GET /api/export/csv/:facilityId
- */
-router.get('/csv/:facilityId', async (req, res) => {
+ * GET /api/export/csv/:facilityId */router.get('/csv/:facilityId', security.authMiddleware, async (req, res) => {
   try {
     const { facilityId } = req.params;
     
@@ -114,9 +113,7 @@ router.get('/csv/:facilityId', async (req, res) => {
 
 /**
  * JSONエクスポート
- * GET /api/export/json/:facilityId
- */
-router.get('/json/:facilityId', async (req, res) => {
+ * GET /api/export/json/:facilityId */router.get('/json/:facilityId', security.authMiddleware, async (req, res) => {
   try {
     const { facilityId } = req.params;
     
@@ -185,9 +182,7 @@ router.get('/json/:facilityId', async (req, res) => {
 
 /**
  * エクスポート統計情報
- * GET /api/export/stats
- */
-router.get('/stats', async (req, res) => {
+ * GET /api/export/stats */router.get('/stats', security.authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.id;
     

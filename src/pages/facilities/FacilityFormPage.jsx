@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 
 const FacilityFormPage = () => {
@@ -8,10 +8,9 @@ const FacilityFormPage = () => {
   const isEditMode = !!id;
   
   const [formData, setFormData] = useState({
-    facility_name: '',
-    agency: '',
     business_type: '',
     concept: '',
+    facility_name: '',
     atmosphere: '',
     unique_strength: '',
     menu_services: '',
@@ -44,8 +43,12 @@ const FacilityFormPage = () => {
     if (isEditMode) {
       const fetchFacility = async () => {
         try {
+          if (id === "new") {
+            setError("施設IDが不正です");
+            return;
+          }
           setLoading(true);
-          const response = await api.facilities.getById(id);
+          const response = await api.facilities.getById(Number(id));
           setFormData(response.data);
           setError(null);
         } catch (err) {
@@ -71,29 +74,38 @@ const FacilityFormPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!formData.facility_name || !formData.business_type) {
+      setError('施設名と業種は必須項目です');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError(null);
-      
+
       if (isEditMode) {
-        await api.facilities.update(id, formData);
+        await api.facilities.update(Number(id), formData);
         setSuccessMessage('施設情報が更新されました');
+        setTimeout(() => {
+          navigate(`/`);
+        }, 1500);
       } else {
         const response = await api.facilities.create(formData);
         setSuccessMessage('施設が登録されました');
-        
-        // 新規作成後、編集画面にリダイレクト
         setTimeout(() => {
-          navigate(`/facilities/${response.data.facility_id}`);
+          navigate(`/`);
         }, 1500);
       }
     } catch (err) {
       console.error('施設情報の保存に失敗しました:', err);
       setError('施設情報の保存に失敗しました。再度お試しください。');
+      if(err.response && err.response.data.errors){
+        setError(err.response.data.errors[0])
+      }
     } finally {
       setSubmitting(false);
       
-      // 成功メッセージを一定時間後に消す
+       // 成功メッセージを一定時間後に消す
       if (successMessage) {
         setTimeout(() => {
           setSuccessMessage('');
@@ -105,6 +117,13 @@ const FacilityFormPage = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
+       {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong className="font-bold">エラー: </strong>
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -115,27 +134,37 @@ const FacilityFormPage = () => {
       <h1 className="text-2xl font-bold mb-6">
         {isEditMode ? '施設情報編集' : '新規施設登録'}
       </h1>
-      
+      {isEditMode && !loading && !error && !formData.facility_name &&(
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+            <div className="flex">
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">施設が見つかりません。</p>
+              </div>
+            </div>
+          </div>
+        )}
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
           <strong className="font-bold">エラー: </strong>
           <span className="block sm:inline">{error}</span>
         </div>
       )}
-      
+
       {successMessage && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
           <span className="block sm:inline">{successMessage}</span>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* 基本情報セクション */}
           <div className="col-span-2">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2">基本情報</h2>
+
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="facility_name">
               施設名 <span className="text-red-500">*</span>
@@ -151,22 +180,6 @@ const FacilityFormPage = () => {
               required
             />
           </div>
-          
-          <div className="mb-4">
-            <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="agency">
-              代理店
-            </label>
-            <input
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              id="agency"
-              name="agency"
-              type="text"
-              placeholder="代理店名"
-              value={formData.agency}
-              onChange={handleChange}
-            />
-          </div>
-          
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="business_type">
               業種 <span className="text-red-500">*</span>
@@ -182,7 +195,7 @@ const FacilityFormPage = () => {
               required
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="concept">
               コンセプト
@@ -197,7 +210,7 @@ const FacilityFormPage = () => {
               rows="3"
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="atmosphere">
               雰囲気
@@ -212,7 +225,7 @@ const FacilityFormPage = () => {
               rows="3"
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="unique_strength">
               特徴
@@ -227,7 +240,7 @@ const FacilityFormPage = () => {
               rows="3"
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="menu_services">
               メニュー・サービス
@@ -242,7 +255,7 @@ const FacilityFormPage = () => {
               rows="3"
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="average_price">
               平均価格
@@ -257,13 +270,13 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           {/* 連絡先・アクセスセクション */}
           <div className="col-span-2">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">連絡先・アクセス</h2>
           </div>
-          
-          <div className="mb-4">
+
+           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="address">
               住所
             </label>
@@ -277,7 +290,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="phone_number">
               電話番号
@@ -292,7 +305,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="website_url">
               Webサイト
@@ -307,7 +320,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="google_map_url">
               Google Map URL
@@ -322,13 +335,13 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           {/* 営業情報セクション */}
           <div className="col-span-2">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">営業情報</h2>
           </div>
-          
-          <div className="mb-4">
+
+           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="business_hours">
               営業時間
             </label>
@@ -342,7 +355,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="regular_holiday">
               定休日
@@ -357,13 +370,13 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           {/* 設備・サービスセクション */}
           <div className="col-span-2">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">設備・サービス</h2>
           </div>
-          
-          <div className="mb-4">
+
+           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="parking">
               駐車場
             </label>
@@ -377,7 +390,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="number_of_seats">
               座席数
@@ -392,7 +405,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="private_room">
               個室
@@ -407,7 +420,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="smoking">
               喫煙
@@ -422,7 +435,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="pet_friendly">
               ペット
@@ -437,7 +450,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="wifi">
               Wi-Fi
@@ -452,7 +465,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="payment_options">
               支払い方法
@@ -467,7 +480,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="barrier_free">
               バリアフリー
@@ -482,13 +495,13 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           {/* その他情報セクション */}
           <div className="col-span-2">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">その他情報</h2>
           </div>
-          
-          <div className="col-span-2 mb-4">
+
+           <div className="col-span-2 mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="additional_info">
               追加情報
             </label>
@@ -502,13 +515,13 @@ const FacilityFormPage = () => {
               rows="4"
             />
           </div>
-          
+
           {/* クローリング用URL */}
           <div className="col-span-2">
             <h2 className="text-xl font-semibold mb-4 border-b pb-2 mt-6">クローリング用URL（キーワード生成に使用）</h2>
           </div>
-          
-          <div className="mb-4">
+
+           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="gbp_url">
               Google ビジネスプロフィールURL
             </label>
@@ -522,7 +535,7 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
-          
+
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="official_site_url">
               公式サイトURL
@@ -537,13 +550,14 @@ const FacilityFormPage = () => {
               onChange={handleChange}
             />
           </div>
+        
         </div>
         
         <div className="flex items-center justify-end mt-8">
           <button
             type="button"
             onClick={() => navigate('/facilities')}
-            className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded mr-2"
+            className="bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded mr-2 ml-2"
           >
             キャンセル
           </button>

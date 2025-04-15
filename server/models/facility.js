@@ -1,4 +1,4 @@
-/**
+ba/**
  * 施設モデル
  * 施設情報の管理と操作を行うモデル
  */
@@ -25,38 +25,62 @@ class Facility {
       if (!userId) {
         throw new Error('ユーザーIDは必須です');
       }
-      
+
       const {
         facility_name,
         business_type,
+        concept,
+        atmosphere,
+        unique_strength,
+        menu_services,
+        average_price,
         address,
-        phone,
+        phone_number,
+        website_url,
+        google_map_url,
         business_hours,
-        closed_days,
-        official_site_url,
-        gbp_url,
-        additional_info
+        regular_holiday,
+        parking,
+        number_of_seats,
+        private_room,
+        smoking,
+        pet_friendly,
+        wifi,
+        payment_options,
+        official_site_url
       } = facilityData;
-      
-      if (!facility_name) {
-        throw new Error('施設名は必須です');
-      }
-      
+      const { phone, barrier_free, additional_info, gbp_url } = facilityData;
       const newFacility = {
-        facility_name,
+        address,
+        phone_number: phone || null,
+        business_hours:business_hours || null,
+        official_site_url,
+        additional_info
+       ,
         business_type: business_type || null,
+        concept: concept || null,
+        atmosphere: atmosphere || null,
+        unique_strength: unique_strength || null,
+        average_price: average_price || null,
         address: address || null,
-        phone: phone || null,
-        business_hours: business_hours || null,
-        closed_days: closed_days || null,
-        official_site_url: official_site_url || null,
+        phone_number: phone_number || null,
+            google_map_url: google_map_url || null,
+            regular_holiday: regular_holiday || null,
+            parking: parking || null,
+            number_of_seats: number_of_seats || null,
+            private_room: private_room || null,
+            smoking: smoking || null,
+            pet_friendly: pet_friendly || null,
+            wifi: wifi || null,
+            payment_options: payment_options || null,
+            barrier_free: barrier_free || null,
         gbp_url: gbp_url || null,
-        additional_info: additional_info || null,
+        menu_services: menu_services || null,
+        official_site_url: official_site_url || null,
         created_by: userId,
         updated_by: userId,
-        created_at: new Date(),
-        updated_at: new Date()
-      };
+
+       };
       
       const { data, error } = await supabase
         .from('facilities')
@@ -129,32 +153,64 @@ class Facility {
       }
       
       const {
+        facility_id,
         facility_name,
         business_type,
+        concept,
+        atmosphere,
+        unique_strength,
+        menu_services,
+        average_price,
         address,
-        phone,
+        phone_number,
+        website_url,
+        google_map_url,
         business_hours,
-        closed_days,
-        official_site_url,
+        regular_holiday,
+        parking,
+        number_of_seats,
+        private_room,
+        smoking,
+        pet_friendly,
+        wifi,
+        payment_options,
+        barrier_free,
+        additional_info,
         gbp_url,
-        additional_info
+        official_site_url
       } = facilityData;
-      
       const updateData = {
-        updated_by: userId,
-        updated_at: new Date()
+            updated_by: userId,
+            updated_at: new Date().toISOString()
       };
+      
       
       if (facility_name !== undefined) updateData.facility_name = facility_name;
       if (business_type !== undefined) updateData.business_type = business_type;
+        if (concept !== undefined) updateData.concept = concept;
+        if (atmosphere !== undefined) updateData.atmosphere = atmosphere;
+        if (unique_strength !== undefined) updateData.unique_strength = unique_strength;
+        if (menu_services !== undefined) updateData.menu_services = menu_services;
+        if (average_price !== undefined) updateData.average_price = average_price;
       if (address !== undefined) updateData.address = address;
-      if (phone !== undefined) updateData.phone = phone;
-      if (business_hours !== undefined) updateData.business_hours = business_hours;
-      if (closed_days !== undefined) updateData.closed_days = closed_days;
+        if (phone_number !== undefined) updateData.phone_number = phone_number;
+        if (website_url !== undefined) updateData.website_url = website_url;
+        if (google_map_url !== undefined) updateData.google_map_url = google_map_url;
+        if (business_hours !== undefined) updateData.business_hours = business_hours;
+        if (regular_holiday !== undefined) updateData.regular_holiday = regular_holiday;
+        if (parking !== undefined) updateData.parking = parking;
+        if (number_of_seats !== undefined) updateData.number_of_seats = number_of_seats;
+        if (private_room !== undefined) updateData.private_room = private_room;
+        if (smoking !== undefined) updateData.smoking = smoking;
+        if (pet_friendly !== undefined) updateData.pet_friendly = pet_friendly;
+        if (wifi !== undefined) updateData.wifi = wifi;
+            if (payment_options !== undefined) updateData.payment_options = payment_options;
+        if (barrier_free !== undefined) updateData.barrier_free = barrier_free;
+
+      if (additional_info !== undefined) updateData.additional_info = additional_info;      
       if (official_site_url !== undefined) updateData.official_site_url = official_site_url;
-      if (gbp_url !== undefined) updateData.gbp_url = gbp_url;
       if (additional_info !== undefined) updateData.additional_info = additional_info;
-      
+
       const { data, error } = await supabase
         .from('facilities')
         .update(updateData)

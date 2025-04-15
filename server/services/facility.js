@@ -1,6 +1,7 @@
 /**
  * 施設サービス
  * 施設情報の処理と操作を行うサービス
+ * In this file: 
  */
 
 import Facility from '../models/facility.js';
@@ -17,7 +18,7 @@ class FacilityService {
    * @param {string} userId - 作成者のユーザーID
    * @returns {Promise<Object>} 作成された施設
    */
-  async createFacility(facilityData, userId) {
+  async create(facilityData, userId) {
     try {
       logger.info(`施設作成開始: ${facilityData.facility_name}`);
       
@@ -38,7 +39,7 @@ class FacilityService {
    * @param {string} facilityId - 施設ID
    * @returns {Promise<Object>} 施設情報
    */
-  async getFacility(facilityId) {
+  async getById(facilityId) {
     try {
       logger.info(`施設取得開始: ID ${facilityId}`);
       
@@ -59,7 +60,7 @@ class FacilityService {
    * @param {string} userId - 更新者のユーザーID
    * @returns {Promise<Object>} 更新された施設
    */
-  async updateFacility(facilityId, facilityData, userId) {
+  async update(facilityId, facilityData, userId) {
     try {
       logger.info(`施設更新開始: ID ${facilityId}`);
       
@@ -83,11 +84,11 @@ class FacilityService {
    * @param {string} userId - 削除者のユーザーID
    * @returns {Promise<Object>} 削除結果
    */
-  async deleteFacility(facilityId, userId) {
+  async delete(facilityId, userId) {
     try {
       logger.info(`施設削除開始: ID ${facilityId}`);
       
-      await this.getFacility(facilityId);
+      await this.getById(facilityId);
       
       try {
         await Keyword.delete(facilityId);
@@ -111,7 +112,7 @@ class FacilityService {
    * @param {Object} options - 取得オプション
    * @returns {Promise<Array>} 施設一覧
    */
-  async listFacilities(options = {}) {
+  async list(options = {}) {
     try {
       logger.info('施設一覧取得開始');
       
@@ -228,35 +229,6 @@ class FacilityService {
     
     if (facilityData.additional_info && facilityData.additional_info.length > 1000) {
       throw new Error('追加情報は1000文字以内で入力してください');
-    }
-  }
-  
-  /**
-   * 施設の検索
-   * @param {string} searchTerm - 検索キーワード
-   * @param {Object} options - 検索オプション
-   * @returns {Promise<Array>} 検索結果
-   */
-  async searchFacilities(searchTerm, options = {}) {
-    try {
-      logger.info(`施設検索開始: "${searchTerm}"`);
-      
-      if (!searchTerm) {
-        throw new Error('検索キーワードは必須です');
-      }
-      
-      const searchOptions = {
-        ...options,
-        searchTerm
-      };
-      
-      const facilities = await Facility.list(searchOptions);
-      
-      logger.info(`施設検索完了: "${searchTerm}" - ${facilities.length}件`);
-      return facilities;
-    } catch (err) {
-      logger.error(`施設検索サービスエラー: ${err.message}`);
-      throw err;
     }
   }
 }

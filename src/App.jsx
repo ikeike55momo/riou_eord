@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/auth/LoginPage';
-import FacilitiesListPage from './pages/facilities/FacilitiesListPage';
+import FacilitiesListPage from './pages/facilities/FacilitiesListPage'; 
 import FacilityFormPage from './pages/facilities/FacilityFormPage';
 import KeywordGenerationPage from './pages/keywords/KeywordGenerationPage';
 import NotFoundPage from './pages/NotFoundPage';

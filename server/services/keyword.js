@@ -18,7 +18,7 @@ class KeywordService {
    * @param {string} facilityId - 施設ID
    * @returns {Promise<Object>} キーワード情報
    */
-  async getKeywordsByFacilityId(facilityId) {
+  async getByFacilityId(facilityId) {
     try {
       logger.info(`キーワード取得開始: 施設ID ${facilityId}`);
       
@@ -46,7 +46,7 @@ class KeywordService {
    * @param {string} userId - 更新者のユーザーID
    * @returns {Promise<Object>} 更新されたキーワード
    */
-  async updateKeywords(facilityId, keywordsData, userId) {
+  async update(facilityId, keywordsData, userId) {
     try {
       logger.info(`キーワード更新開始: 施設ID ${facilityId}`);
       
@@ -75,7 +75,7 @@ class KeywordService {
    * @param {string} userId - 生成者のユーザーID
    * @returns {Promise<Object>} 生成されたキーワード
    */
-  async generateKeywords(facilityId, userId) {
+  async generate(facilityId, userId) {
     try {
       logger.info(`キーワード生成開始: 施設ID ${facilityId}`);
       
@@ -107,7 +107,7 @@ class KeywordService {
    * @param {string} facilityId - 施設ID
    * @returns {Promise<Object>} 削除結果
    */
-  async deleteKeywords(facilityId) {
+  async delete(facilityId) {
     try {
       logger.info(`キーワード削除開始: 施設ID ${facilityId}`);
       
@@ -132,7 +132,7 @@ class KeywordService {
    * キーワードの統計情報取得
    * @returns {Promise<Object>} 統計情報
    */
-  async getKeywordStats() {
+  async getStats() {
     try {
       logger.info('キーワード統計情報取得開始');
       
@@ -209,9 +209,9 @@ class KeywordService {
    * @param {string} format - エクスポート形式 ('csv' または 'json')
    * @returns {Promise<Object>} エクスポートデータ
    */
-  async exportKeywords(facilityId, format = 'json') {
+  async export(facilityId, format = 'json') {
     try {
-      logger.info(`キーワードエクスポート開始: 施設ID ${facilityId}, 形式 ${format}`);
+      logger.info(`キーワードエクスポート開始: 施設ID ${facilityId} , 形式 ${format}`);
       
       let facility;
       try {
@@ -285,7 +285,7 @@ class KeywordService {
         throw new Error('サポートされていないエクスポート形式です');
       }
       
-      logger.info(`キーワードエクスポート完了: 施設ID ${facilityId}, 形式 ${format}`);
+      logger.info(`キーワードエクスポート完了: 施設ID ${facilityId} , 形式 ${format}`);
       return exportData;
     } catch (err) {
       logger.error(`キーワードエクスポートサービスエラー: ${err.message}`);

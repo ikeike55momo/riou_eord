@@ -85,46 +85,54 @@ const FacilitiesListPage = () => {
         </div>
       ) : (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {facilities.map((facility) => (
-              <li key={facility.facility_id}>
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="ml-3">
-                        <p className="text-lg font-medium text-blue-600 truncate">
-                          {facility.facility_name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {facility.business_type || '業種未設定'} | {facility.agency || '代理店未設定'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Link
-                        to={`/facilities/${facility.facility_id}/keywords`}
-                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500"
-                      >
-                        キーワード生成
-                      </Link>
-                      <Link
-                        to={`/facilities/${facility.facility_id}`}
-                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-500"
-                      >
-                        編集
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(facility.facility_id)}
-                        className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-red-600 hover:bg-red-500"
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  施設名
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  業種
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  代理店
+                </th>
+                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  操作
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {facilities.map((facility) => (
+                <tr key={facility.facility_id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Link to={`/facilities/${facility.facility_id}`} className="text-blue-600 hover:text-blue-900">
+                      {facility.facility_name}
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{facility.business_type || '業種未設定'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{facility.agency || '代理店未設定'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <Link to={`/facilities/${facility.facility_id}/keywords`} className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-green-600 hover:bg-green-500 mr-2">キーワード生成</Link>
+                    <button onClick={() => handleDelete(facility.facility_id)} className="inline-flex items-center px-3 py-1 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-red-600 hover:bg-red-500">削除</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
